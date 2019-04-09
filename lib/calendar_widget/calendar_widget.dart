@@ -1,22 +1,33 @@
-import 'dart:collection';
-
 import 'package:flutter/material.dart';
 import 'package:date_utils/date_utils.dart';
+import 'package:intl/intl.dart';
 
 class CalendarWidget extends StatefulWidget {
+  final Map<String, List<String>> markedDates;
+  final Function markBuilder;
+  final DayTileBorderType borderType;
+  final double dayTileMargin;
+  final Function onTap;
+  final Map<String, bool> selectedDates;
+
+  CalendarWidget({
+    this.markedDates,
+    this.markBuilder,
+    this.borderType,
+    this.dayTileMargin,
+    this.onTap,
+    this.selectedDates,
+  });
+
   @override
   _CalendarWidgetState createState() => _CalendarWidgetState();
 }
 
 class _CalendarWidgetState extends State<CalendarWidget> {
   DateTime _visibleMonth;
-  // DateTime _nextMonth;
-  // DateTime _prevMonth;
 
   int _currentPageIndex = 999;
-
-  List<DateTime> months;
-  Queue<Widget> q;
+  PageController _pageController;
 
   _onPageChanged(pageIndex) {
     if (pageIndex > _currentPageIndex) {
@@ -28,13 +39,12 @@ class _CalendarWidgetState extends State<CalendarWidget> {
     setState(() {});
 
     _currentPageIndex = pageIndex;
-
-    debugPrint(_visibleMonth.toIso8601String());
   }
 
   void initState() {
     super.initState();
     _visibleMonth = Utils.firstDayOfMonth(DateTime.now());
+    _pageController = PageController(initialPage: _currentPageIndex)
   }
 
   @override
@@ -42,21 +52,55 @@ class _CalendarWidgetState extends State<CalendarWidget> {
     return Column(
       children: <Widget>[
         Container(
-          child: Text('${Utils.formatMonth(_visibleMonth)}'),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              IconButton(
+                icon: Icon(
+                  Icons.chevron_left,
+                  color: Theme.of(context).primaryColor,
+                ),
+                onPressed: () {},
+              ),
+              Text(
+                '${Utils.formatMonth(_visibleMonth)}',
+                style: TextStyle(
+                  color: Theme.of(context).primaryColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.chevron_right,
+                  color: Theme.of(context).primaryColor,
+                ),
+                onPressed: () {
+                  _pageController.nextPage(curve: Curves.easeIn, duration: Duration(milliseconds: 100));
+                },
+              ),
+            ],
+          ),
         ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: List.generate(Utils.weekdays.length, (index) {
-            return Expanded(
-              child:
-                  Text('${Utils.weekdays[index]}', textAlign: TextAlign.center),
-            );
-          }),
+        Container(
+          padding: EdgeInsets.only(bottom: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(Utils.weekdays.length, (index) {
+              return Expanded(
+                child: Text(
+                  '${Utils.weekdays[index]}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.red),
+                ),
+              );
+            }),
+          ),
         ),
         Expanded(
           child: PageView.builder(
-            // itemCount: months.length,
-            controller: PageController(initialPage: _currentPageIndex),
+            controller: _pageController,
             onPageChanged: _onPageChanged,
             itemBuilder: (context, pageIndex) {
               List<DateTime> days = Utils.daysInMonth(_visibleMonth);
@@ -69,9 +113,19 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
                         DayTile(
-                            dateTime: days[index],
-                            isDayOfCurrentMonth:
-                                days[index].month == _visibleMonth.month),
+                          dateTime: days[index],
+                          isDayOfCurrentMonth:
+                              days[index].month == _visibleMonth.month,
+                          events: widget.markedDates[
+                              DateFormat('y-M-d').format(days[index])],
+                          markBuilder: widget.markBuilder,
+                          borderType: widget.borderType,
+                          dayTileMargin: widget.dayTileMargin,
+                          onTap: widget.onTap,
+                          isSelected: widget.selectedDates[
+                                  DateFormat('y-M-d').format(days[index])] ??
+                              false,
+                        ),
                       ],
                     );
                   });
@@ -83,33 +137,144 @@ class _CalendarWidgetState extends State<CalendarWidget> {
   }
 }
 
-class DayTile extends StatelessWidget {
+enum DayTileBorderType { CIRCULAR, SQUARE, NONE }
+
+class DayTile extends StatefulWidget {
   final DateTime dateTime;
   final bool isDayOfCurrentMonth;
+  final List<String> events;
+  final Function markBuilder;
+  final DayTileBorderType borderType;
+  final double dayTileMargin;
+  final Function onTap;
+  final bool isSelected;
 
-  DayTile({this.dateTime, this.isDayOfCurrentMonth});
+  DayTile({
+    this.dateTime,
+    this.isDayOfCurrentMonth,
+    this.events,
+    this.markBuilder,
+    this.borderType,
+    this.dayTileMargin,
+    this.onTap,
+    this.isSelected,
+  });
+
+  @override
+  _DayTileState createState() => _DayTileState();
+}
+
+class _DayTileState extends State<DayTile> {
+  bool _isSelected;
+
+  @override
+  void initState() {
+    super.initState();
+    _isSelected = widget.isSelected;
+  }
 
   @override
   Widget build(BuildContext context) {
+    int borderRadius;
+
+    if (widget.borderType == DayTileBorderType.CIRCULAR) {
+      borderRadius = 300;
+    } else if (widget.borderType == DayTileBorderType.SQUARE) {
+      borderRadius = 0;
+    } else if (widget.borderType == DayTileBorderType.NONE) {
+      borderRadius = null;
+    }
+
     return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          _isSelected = !_isSelected;
+          this.widget.onTap(widget.dateTime, _isSelected);
+          setState(() {});
+        },
+        child: Container(
+          margin: EdgeInsets.all(widget.dayTileMargin ?? 1),
+          width: double.infinity,
+          decoration: borderRadius != null
+              ? BoxDecoration(
+                  border: Border.all(width: 1, color: Colors.grey),
+                  borderRadius: BorderRadius.circular(300),
+                  color: _isSelected ? Colors.green : Colors.transparent,
+                )
+              : BoxDecoration(
+                  color: _isSelected ? Colors.green : Colors.transparent,
+                ),
+          child: Stack(
+            children: <Widget>[
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Text(
+                    '${widget.dateTime.day}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: widget.isDayOfCurrentMonth
+                            ? Colors.black87
+                            : Colors.grey),
+                  ),
+                ],
+              ),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child:
+                    EventMarks(widget.events, markBuilder: widget.markBuilder),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class EventMarks extends StatelessWidget {
+  final List<String> events;
+  final Function markBuilder;
+
+  EventMarks(this.events, {this.markBuilder});
+
+  @override
+  Widget build(BuildContext context) {
+    if (events == null || events.length == 0) {
+      return Container();
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(events.length, (index) {
+        if (this.markBuilder != null) {
+          return this.markBuilder(events[index]);
+        }
+        if (events[index] == 'Hello') {
+          return EventMark(Colors.green);
+        } else {
+          return EventMark(Colors.red);
+        }
+      }),
+    );
+  }
+}
+
+class EventMark extends StatelessWidget {
+  final Color color;
+
+  EventMark(this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 5),
       child: Container(
-        margin: EdgeInsets.all(4),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          border: Border.all(width: 1, color: Colors.grey),
-          borderRadius: BorderRadius.circular(300)
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Text(
-              '${dateTime.day}',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: isDayOfCurrentMonth ? Colors.black87 : Colors.grey),
-            ),
-          ],
-        ),
+        width: 6,
+        height: 6,
+        margin: EdgeInsets.symmetric(horizontal: 1),
+        color: color,
       ),
     );
   }
