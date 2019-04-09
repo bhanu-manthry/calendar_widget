@@ -5,18 +5,26 @@ import 'package:intl/intl.dart';
 class CalendarWidget extends StatefulWidget {
   final Map<String, List<String>> markedDates;
   final Function markBuilder;
-  final DayTileBorderType borderType;
+  final double borderRadius;
   final double dayTileMargin;
   final Function onTap;
   final Map<String, bool> selectedDates;
+  final Color dayTileBorderColor;
+  final Function dayTileBuilder;
+  final Function weekBuilder;
+  final bool showBorder;
 
   CalendarWidget({
     this.markedDates,
     this.markBuilder,
-    this.borderType,
-    this.dayTileMargin,
+    this.borderRadius,
     this.onTap,
     this.selectedDates,
+    this.dayTileMargin,
+    this.dayTileBorderColor,
+    this.dayTileBuilder,
+    this.weekBuilder,
+    this.showBorder,
   });
 
   @override
@@ -61,7 +69,11 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                   Icons.chevron_left,
                   color: Theme.of(context).primaryColor,
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  setState(() {
+                    _visibleMonth = Utils.previousMonth(_visibleMonth);
+                  });
+                },
               ),
               Text(
                 '${Utils.formatMonth(_visibleMonth)}',
@@ -77,18 +89,19 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                   color: Theme.of(context).primaryColor,
                 ),
                 onPressed: () {
-                  _pageController.nextPage(
-                      curve: Curves.easeIn,
-                      duration: Duration(milliseconds: 100));
+                  setState(() {
+                    _visibleMonth = Utils.nextMonth(_visibleMonth);
+                  });
                 },
               ),
             ],
           ),
         ),
-        Container(
+        widget.weekBuilder != null
+        ? widget.weekBuilder(Utils.weekdays)
+        : Container(
           padding: EdgeInsets.only(bottom: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          child: Row(            
             children: List.generate(Utils.weekdays.length, (index) {
               return Expanded(
                 child: Text(
@@ -114,19 +127,22 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                     return Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
-                        DayTile(
+                        DayTileContainer(
                           dateTime: days[index],
                           isDayOfCurrentMonth:
                               days[index].month == _visibleMonth.month,
                           events: widget.markedDates[
                               DateFormat('y-M-d').format(days[index])],
                           markBuilder: widget.markBuilder,
-                          borderType: widget.borderType,
+                          borderRadius: widget.borderRadius,
                           dayTileMargin: widget.dayTileMargin,
                           onTap: widget.onTap,
                           isSelected: widget.selectedDates[
                                   DateFormat('y-M-d').format(days[index])] ??
                               false,
+                          dayTileBorderColor: widget.dayTileBorderColor,
+                          dayTileBuilder: widget.dayTileBuilder,
+                          showBorder: widget.showBorder,
                         ),
                       ],
                     );
@@ -139,62 +155,110 @@ class _CalendarWidgetState extends State<CalendarWidget> {
   }
 }
 
-enum DayTileBorderType {
-  CIRCULAR,
-  SQUARE,
-  NONE,
-}
+class DayTileContainer extends StatelessWidget {
 
-class DayTile extends StatelessWidget {
   final DateTime dateTime;
   final bool isDayOfCurrentMonth;
   final List<String> events;
   final Function markBuilder;
-  final DayTileBorderType borderType;
+  final double borderRadius;
   final double dayTileMargin;
   final Function onTap;
   final bool isSelected;
+  final Color dayTileBorderColor;
+  final Function dayTileBuilder;
+  final bool showBorder;
 
-  DayTile({
+  DayTileContainer({
     this.dateTime,
     this.isDayOfCurrentMonth,
     this.events,
     this.markBuilder,
-    this.borderType,
+    this.borderRadius,
     this.dayTileMargin,
     this.onTap,
     this.isSelected,
+    this.dayTileBorderColor,
+    this.dayTileBuilder,
+    this.showBorder,
   });
 
   @override
   Widget build(BuildContext context) {
-    double borderRadius;
-
-    if (borderType == DayTileBorderType.CIRCULAR) {
-      borderRadius = 300;
-    } else if (borderType == DayTileBorderType.SQUARE) {
-      borderRadius = 0;
-    } else if (borderType == DayTileBorderType.NONE) {
-      borderRadius = null;
-    }
-
+    DayProps dayProps = DayProps(
+      dateTime: dateTime,
+      isDayOfCurrentMonth: isDayOfCurrentMonth,
+      events: events,
+      markBuilder: markBuilder,
+      borderRadius: borderRadius,
+      dayTileMargin: dayTileMargin,    
+      isSelected: isSelected,
+      dayTileBorderColor: dayTileBorderColor,
+      showBorder: showBorder,
+    );
     return Expanded(
       child: GestureDetector(
-        onTap: () {          
-          onTap(dateTime, !isSelected);          
+        onTap: () {
+          onTap(dateTime, !isSelected);
         },
+        onLongPress: () {},
         child: Container(
-          margin: EdgeInsets.all(dayTileMargin ?? 1),
           width: double.infinity,
-          decoration: borderRadius != null
-              ? BoxDecoration(
-                  border: Border.all(width: 1, color: Colors.grey),
-                  borderRadius: BorderRadius.circular(borderRadius),
-                  color: isSelected ? Colors.green : Colors.transparent,
-                )
-              : BoxDecoration(
-                  color: isSelected ? Colors.green : Colors.transparent,
-                ),
+          child: dayTileBuilder != null
+          ? dayTileBuilder(dayProps)
+          : DayTile(dayProps),
+        )
+      ),
+    );
+  }
+}
+
+class DayProps {
+  final DateTime dateTime;
+  final bool isDayOfCurrentMonth;
+  final List<String> events;
+  final Function markBuilder;
+  final double borderRadius;
+  final double dayTileMargin;
+  final Function onTap;
+  final bool isSelected;
+  final Color dayTileBorderColor;
+  final bool showBorder;
+
+  DayProps({
+    this.dateTime,
+    this.isDayOfCurrentMonth,
+    this.events,
+    this.markBuilder,
+    this.borderRadius,
+    this.dayTileMargin,
+    this.onTap,
+    this.isSelected,
+    this.dayTileBorderColor,
+    this.showBorder,
+  });
+}
+
+
+class DayTile extends StatelessWidget {
+  final DayProps props;
+
+  DayTile(this.props);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+          margin: EdgeInsets.all(props.dayTileMargin ?? 3),          
+          decoration: BoxDecoration(
+            border: props.showBorder == true
+              ? Border.all(
+              width: 1,
+              color: props.dayTileBorderColor ?? Colors.grey,
+            )
+            : null,
+            borderRadius: BorderRadius.circular(props.borderRadius),
+            color: props.isSelected ? Colors.green : Colors.transparent,
+          ),
           child: Stack(
             children: <Widget>[
               Column(
@@ -202,25 +266,21 @@ class DayTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
                   Text(
-                    '${dateTime.day}',
+                    '${props.dateTime.day}',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        color: isDayOfCurrentMonth
-                            ? Colors.black87
-                            : Colors.grey),
+                        color:
+                            props.isDayOfCurrentMonth ? Colors.black87 : Colors.grey),
                   ),
                 ],
               ),
               Align(
                 alignment: Alignment.bottomCenter,
-                child:
-                    EventMarks(events, markBuilder: markBuilder),
+                child: EventMarks(props.events, markBuilder: props.markBuilder),
               ),
             ],
           ),
-        ),
-      ),
-    );
+        );
   }
 }
 
