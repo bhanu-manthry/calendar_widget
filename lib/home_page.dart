@@ -46,8 +46,8 @@ class _HomePageState extends State<HomePage> {
               color: Colors.indigo,
             );
           },
-          borderType: DayTileBorderType.CIRCULAR,
-          dayTileMargin: 1,
+          borderType: DayTileBorderType.SQUARE,
+          dayTileMargin: 3,
           selectedDates: _selectedDates,
           onTap: (DateTime date, isSelected) {
             debugPrint(date.toIso8601String());
@@ -56,6 +56,8 @@ class _HomePageState extends State<HomePage> {
             } else {
               _selectedDates.remove(DateFormat('y-M-d').format(date));
             }
+
+            setState(() {});
             print(_selectedDates);
           },
         ),

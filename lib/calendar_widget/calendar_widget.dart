@@ -44,7 +44,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
   void initState() {
     super.initState();
     _visibleMonth = Utils.firstDayOfMonth(DateTime.now());
-    _pageController = PageController(initialPage: _currentPageIndex)
+    _pageController = PageController(initialPage: _currentPageIndex);
   }
 
   @override
@@ -77,7 +77,9 @@ class _CalendarWidgetState extends State<CalendarWidget> {
                   color: Theme.of(context).primaryColor,
                 ),
                 onPressed: () {
-                  _pageController.nextPage(curve: Curves.easeIn, duration: Duration(milliseconds: 100));
+                  _pageController.nextPage(
+                      curve: Curves.easeIn,
+                      duration: Duration(milliseconds: 100));
                 },
               ),
             ],
@@ -137,9 +139,13 @@ class _CalendarWidgetState extends State<CalendarWidget> {
   }
 }
 
-enum DayTileBorderType { CIRCULAR, SQUARE, NONE }
+enum DayTileBorderType {
+  CIRCULAR,
+  SQUARE,
+  NONE,
+}
 
-class DayTile extends StatefulWidget {
+class DayTile extends StatelessWidget {
   final DateTime dateTime;
   final bool isDayOfCurrentMonth;
   final List<String> events;
@@ -161,48 +167,33 @@ class DayTile extends StatefulWidget {
   });
 
   @override
-  _DayTileState createState() => _DayTileState();
-}
-
-class _DayTileState extends State<DayTile> {
-  bool _isSelected;
-
-  @override
-  void initState() {
-    super.initState();
-    _isSelected = widget.isSelected;
-  }
-
-  @override
   Widget build(BuildContext context) {
-    int borderRadius;
+    double borderRadius;
 
-    if (widget.borderType == DayTileBorderType.CIRCULAR) {
+    if (borderType == DayTileBorderType.CIRCULAR) {
       borderRadius = 300;
-    } else if (widget.borderType == DayTileBorderType.SQUARE) {
+    } else if (borderType == DayTileBorderType.SQUARE) {
       borderRadius = 0;
-    } else if (widget.borderType == DayTileBorderType.NONE) {
+    } else if (borderType == DayTileBorderType.NONE) {
       borderRadius = null;
     }
 
     return Expanded(
       child: GestureDetector(
-        onTap: () {
-          _isSelected = !_isSelected;
-          this.widget.onTap(widget.dateTime, _isSelected);
-          setState(() {});
+        onTap: () {          
+          onTap(dateTime, !isSelected);          
         },
         child: Container(
-          margin: EdgeInsets.all(widget.dayTileMargin ?? 1),
+          margin: EdgeInsets.all(dayTileMargin ?? 1),
           width: double.infinity,
           decoration: borderRadius != null
               ? BoxDecoration(
                   border: Border.all(width: 1, color: Colors.grey),
-                  borderRadius: BorderRadius.circular(300),
-                  color: _isSelected ? Colors.green : Colors.transparent,
+                  borderRadius: BorderRadius.circular(borderRadius),
+                  color: isSelected ? Colors.green : Colors.transparent,
                 )
               : BoxDecoration(
-                  color: _isSelected ? Colors.green : Colors.transparent,
+                  color: isSelected ? Colors.green : Colors.transparent,
                 ),
           child: Stack(
             children: <Widget>[
@@ -211,10 +202,10 @@ class _DayTileState extends State<DayTile> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
                   Text(
-                    '${widget.dateTime.day}',
+                    '${dateTime.day}',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        color: widget.isDayOfCurrentMonth
+                        color: isDayOfCurrentMonth
                             ? Colors.black87
                             : Colors.grey),
                   ),
@@ -223,7 +214,7 @@ class _DayTileState extends State<DayTile> {
               Align(
                 alignment: Alignment.bottomCenter,
                 child:
-                    EventMarks(widget.events, markBuilder: widget.markBuilder),
+                    EventMarks(events, markBuilder: markBuilder),
               ),
             ],
           ),
