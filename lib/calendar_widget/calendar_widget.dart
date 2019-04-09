@@ -21,9 +21,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
   _onPageChanged(pageIndex) {
     if (pageIndex > _currentPageIndex) {
       _visibleMonth = Utils.nextMonth(_visibleMonth);
-    }
-
-    else if (pageIndex < _currentPageIndex) {
+    } else if (pageIndex < _currentPageIndex) {
       _visibleMonth = Utils.previousMonth(_visibleMonth);
     }
 
@@ -35,12 +33,12 @@ class _CalendarWidgetState extends State<CalendarWidget> {
   }
 
   void initState() {
-    super.initState();    
+    super.initState();
     _visibleMonth = Utils.firstDayOfMonth(DateTime.now());
   }
 
   @override
-  Widget build(BuildContext context) {    
+  Widget build(BuildContext context) {
     return Column(
       children: <Widget>[
         Container(
@@ -93,13 +91,25 @@ class DayTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      shape: CircleBorder(),
-          child: Text(
-        '${dateTime.day}',
-        textAlign: TextAlign.center,
-        style:
-            TextStyle(color: isDayOfCurrentMonth ? Colors.black87 : Colors.grey),
+    return Expanded(
+      child: Container(
+        margin: EdgeInsets.all(4),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          border: Border.all(width: 1, color: Colors.grey),
+          borderRadius: BorderRadius.circular(300)
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Text(
+              '${dateTime.day}',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: isDayOfCurrentMonth ? Colors.black87 : Colors.grey),
+            ),
+          ],
+        ),
       ),
     );
   }
